@@ -1,0 +1,44 @@
+{
+  "name": "magpie-agent-dbx",
+  "version": "0.1.0",
+  "description": "Magpie agent plugin for DBX: writes Magpie's gateway and model list into DBX's AI configuration, with clean restore on disconnect.",
+  "type": "module",
+  "main": "./index.mjs",
+  "files": [
+    "dbx.agent.mjs",
+    "index.mjs",
+    "lib/",
+    "tools/",
+    "install.sh",
+    "install.ps1",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zonsunny/magpie-agent-dbx.git"
+  },
+  "homepage": "https://github.com/zonsunny/magpie-agent-dbx#readme",
+  "bugs": {
+    "url": "https://github.com/zonsunny/magpie-agent-dbx/issues"
+  },
+  "keywords": [
+    "magpie",
+    "magpie-agent",
+    "dbx",
+    "ai-agent",
+    "llm-gateway"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
+    "doctor": "node tools/doctor.mjs"
+  },
+  "magpie": {
+    "agent": "./dbx.agent.mjs"
+  }
+}
