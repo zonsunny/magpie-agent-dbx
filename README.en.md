@@ -101,7 +101,7 @@ index.mjs (Magpie's Bun plugin host, ~2s poll)
 ai_configs row id=magpie
   provider=openai-compatible
   endpoint=<Magpie /v1>
-  apiKey=<gateway key>
+  apiKey left empty (a plaintext key retriggers DBX's secret-store wizard)
 app_state.ai_chat_selection_v1.active → that row + current model
     │
     ▼

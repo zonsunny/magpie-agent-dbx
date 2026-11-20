@@ -101,7 +101,7 @@ index.mjs（Magpie 的 Bun 插件宿主，约 2s 轮询一次）
 ai_configs 行 id=magpie
   provider=openai-compatible
   endpoint=<Magpie /v1>
-  apiKey=<gateway key>
+  apiKey 留空（避免触发 DBX 的数据安全迁移）
 app_state.ai_chat_selection_v1.active → 该行 + 当前模型
     │
     ▼

@@ -1,6 +1,6 @@
 {
   "name": "magpie-agent-dbx",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Magpie agent plugin for DBX: writes Magpie's gateway and model list into DBX's AI configuration, with clean restore on disconnect.",
   "type": "module",
   "main": "./index.mjs",

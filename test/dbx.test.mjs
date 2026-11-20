@@ -200,7 +200,7 @@ test('syncToDbxDb + restoreDbxDb preserves user configs, handles name collision,
     const cfg = JSON.parse(magpie.config_json);
     assert.equal(cfg.provider, 'openai-compatible');
     assert.equal(cfg.endpoint, 'http://127.0.0.1:3425/v1');
-    assert.equal(cfg.apiKey, 'magpie-dbx');
+    assert.equal(cfg.apiKey, '');
     assert.equal(cfg.apiStyle, 'completions');
     // User's own encrypted secret must be untouched
     const userSec = db.prepare('SELECT secret_enc FROM connection_secrets WHERE connection_id = ?').get('ai_config.user-cfg-1');
@@ -209,28 +209,50 @@ test('syncToDbxDb + restoreDbxDb preserves user configs, handles name collision,
     assert.deepEqual(chatSel.active, { configId: MAGPIE_CONFIG_ID, modelId: 'deepseek/deepseek-chat' });
     db.close();
 
-    // Idempotent second sync (including after DBX migrates apiKey into connection_secrets!)
+    // A leftover plaintext apiKey must be cleared, without deleting DBX's encrypted secret.
     const dbW = await openDatabase(dbFile);
-    const strippedCfg = { ...cfg, apiKey: '' };
-    dbW.prepare('UPDATE ai_configs SET config_json = ? WHERE id = ?').run(JSON.stringify(strippedCfg), MAGPIE_CONFIG_ID);
-    dbW.prepare("INSERT INTO connection_secrets (connection_id, key, secret, secret_enc) VALUES (?, 'config', '', 'dbxenc1.migrated')").run(
-      `ai_config.${MAGPIE_CONFIG_ID}`
+    dbW.prepare('UPDATE ai_configs SET config_json = ? WHERE id = ?').run(
+      JSON.stringify({ ...cfg, apiKey: 'magpie-dbx' }),
+      MAGPIE_CONFIG_ID
     );
+    dbW.prepare(
+      "INSERT INTO connection_secrets (connection_id, key, secret, secret_enc) VALUES (?, 'config', '', 'dbxenc1.migrated')"
+    ).run(`ai_config.${MAGPIE_CONFIG_ID}`);
     dbW.close();
 
     const res2 = await syncToDbxDb(dbFile, sel, res1.state);
     assert.equal(res2.ok, true);
-    assert.equal(res2.changed, false);
+    assert.equal(res2.changed, true);
+    const dbAfterClear = await openDatabase(dbFile, { readonly: true });
+    const cleared = JSON.parse(
+      dbAfterClear.prepare('SELECT config_json FROM ai_configs WHERE id = ?').get(MAGPIE_CONFIG_ID).config_json
+    );
+    assert.equal(cleared.apiKey, '');
+    const keptSecret = dbAfterClear
+      .prepare('SELECT secret_enc FROM connection_secrets WHERE connection_id = ?')
+      .get(`ai_config.${MAGPIE_CONFIG_ID}`);
+    assert.equal(keptSecret.secret_enc, 'dbxenc1.migrated');
+    dbAfterClear.close();
 
-    // Switching model updates row and clears stale secret so DBX re-migrates cleanly
+    const res2b = await syncToDbxDb(dbFile, sel, res2.state);
+    assert.equal(res2b.ok, true);
+    assert.equal(res2b.changed, false);
+
+    // Switching model updates the row but leaves the encrypted secret in place.
     const sel2 = parseSelection({
       gateway: { url: 'http://127.0.0.1:3425/v1', key: 'magpie-dbx' },
       model: 'anthropic/claude-sonnet-4-6',
       models: sel.models,
     });
-    const res3 = await syncToDbxDb(dbFile, sel2, res2.state);
+    const res3 = await syncToDbxDb(dbFile, sel2, res2b.state);
     assert.equal(res3.ok, true);
     assert.equal(res3.changed, true);
+    const dbAfterSwitch = await openDatabase(dbFile, { readonly: true });
+    const stillSecret = dbAfterSwitch
+      .prepare('SELECT secret_enc FROM connection_secrets WHERE connection_id = ?')
+      .get(`ai_config.${MAGPIE_CONFIG_ID}`);
+    assert.equal(stillSecret.secret_enc, 'dbxenc1.migrated');
+    dbAfterSwitch.close();
 
     const summary = await inspectDbxDb(dbFile);
     assert.equal(summary.magpieModel, 'anthropic/claude-sonnet-4-6');
